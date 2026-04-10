@@ -2,11 +2,134 @@
 
 // --- UI Navigation & State Toggles ---
 
-function toggleRibbon() {
-    state.ribbonView = state.ribbonView === 'raw' ? 'goods' : 'raw';
-    document.getElementById('ribbon-raw').classList.toggle('hidden', state.ribbonView !== 'raw');
-    document.getElementById('ribbon-goods').classList.toggle('hidden', state.ribbonView !== 'goods');
-    document.getElementById('ribbon-toggle-text').textContent = state.ribbonView === 'raw' ? 'View Crafted Goods' : 'View Raw Resources';
+function toggleOptionsMenu(event) {
+    event?.stopPropagation();
+    document.getElementById('options-menu')?.classList.toggle('hidden');
+}
+
+function closeOptionsMenu(e) {
+    if (!e.target.closest('#options-dropdown-container')) {
+        document.getElementById('options-menu')?.classList.add('hidden');
+    }
+}
+
+function syncLayoutOffsets() {
+    const header = document.querySelector('.game-main > header');
+    const headerOffset = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--header-offset', `${headerOffset}px`);
+}
+
+function syncMenuState() {
+    const hasSaves = [0, 1, 2, 3].some((i) => localStorage.getItem(`estatesim_save_${i}`));
+    const hasActiveRealm = !document.getElementById('game-container')?.classList.contains('hidden') && state.tick > 0;
+    const hasContinue = hasSaves || hasActiveRealm;
+    const startBtn = document.getElementById('btn-start-game');
+    const continueBtn = document.getElementById('btn-open-save-from-menu');
+    const confirmBtn = document.getElementById('btn-confirm-begin');
+
+    hideNewGameSetup();
+
+    if (startBtn) {
+        startBtn.textContent = 'Begin';
+    }
+
+    if (confirmBtn) {
+        confirmBtn.textContent = 'Begin';
+    }
+
+    if (continueBtn) {
+        continueBtn.classList.toggle('hidden', !hasContinue);
+    }
+}
+
+function showNewGameSetup() {
+    document.getElementById('menu-action-group')?.classList.add('hidden');
+    document.getElementById('menu-name-group')?.classList.remove('hidden');
+
+    const estateNameInput = document.getElementById('estate-name-input');
+    if (estateNameInput) {
+        estateNameInput.focus();
+        estateNameInput.select();
+    }
+}
+
+function hideNewGameSetup() {
+    document.getElementById('menu-action-group')?.classList.remove('hidden');
+    document.getElementById('menu-name-group')?.classList.add('hidden');
+}
+
+function handleMenuBegin() {
+    showNewGameSetup();
+}
+
+function handleMenuContinue() {
+    const hasActiveRealm = !document.getElementById('game-container')?.classList.contains('hidden') && state.tick > 0;
+
+    if (hasActiveRealm && state.menuReturnScene) {
+        document.getElementById('menu-screen')?.classList.add('hidden');
+        state.scene = state.menuReturnScene;
+        delete state.menuReturnScene;
+        updateNavState();
+        syncMenuState();
+        syncLayoutOffsets();
+        render();
+        return;
+    }
+
+    openSaveLoadModal();
+}
+
+function updateNavState() {
+    document.querySelectorAll('.main-nav .nav-btn').forEach((btn) => {
+        btn.classList.toggle('is-active', btn.dataset.target === state.scene);
+    });
+}
+
+function openMainMenu() {
+    state.menuReturnScene = state.scene && state.scene !== 'menu' ? state.scene : (state.menuReturnScene || 'estate');
+    state.scene = 'menu';
+    document.getElementById('menu-screen')?.classList.remove('hidden');
+    document.getElementById('options-menu')?.classList.add('hidden');
+
+    const estateNameInput = document.getElementById('estate-name-input');
+    if (estateNameInput) {
+        estateNameInput.value = state.estateName || estateNameInput.value;
+    }
+
+    hideNewGameSetup();
+    updateNavState();
+    syncMenuState();
+}
+
+function syncStockpilePanel() {
+    const panel = document.getElementById('stockpiles-panel');
+    const raw = document.getElementById('ribbon-raw');
+    const goods = document.getElementById('ribbon-goods');
+    const toggleText = document.getElementById('stockpile-toggle-text');
+    const rawBtn = document.getElementById('btn-stockpile-raw');
+    const goodsBtn = document.getElementById('btn-stockpile-goods');
+
+    if (!panel || !raw || !goods || !toggleText || !rawBtn || !goodsBtn) return;
+
+    panel.classList.toggle('hidden', !state.showStockpiles);
+    raw.classList.toggle('hidden', !state.showStockpiles || state.ribbonView !== 'raw');
+    goods.classList.toggle('hidden', !state.showStockpiles || state.ribbonView !== 'goods');
+    rawBtn.classList.toggle('hidden', !state.showStockpiles);
+    goodsBtn.classList.toggle('hidden', !state.showStockpiles);
+    rawBtn.classList.toggle('is-active', state.showStockpiles && state.ribbonView === 'raw');
+    goodsBtn.classList.toggle('is-active', state.showStockpiles && state.ribbonView === 'goods');
+    toggleText.textContent = state.showStockpiles ? 'Hide Stockpiles' : 'Show Stockpiles';
+}
+
+function toggleStockpiles() {
+    state.showStockpiles = !state.showStockpiles;
+    syncStockpilePanel();
+}
+
+function setStockpileView(view) {
+    state.ribbonView = view;
+    state.showStockpiles = true;
+    syncStockpilePanel();
 }
 
 function toggleMarketTab(tab) {
@@ -22,6 +145,7 @@ function toggleMarketTab(tab) {
 
 function startGame() {
     const input = document.getElementById('estate-name-input').value;
+    resetGameState();
     state.estateName = input || "Lockwood Keep";
     state.territories[0].name = state.estateName;
     document.getElementById('display-estate-name').textContent = state.estateName;
@@ -29,6 +153,10 @@ function startGame() {
     document.getElementById('menu-screen').classList.add('hidden');
     document.getElementById('game-container').classList.remove('hidden');
     state.scene = 'estate';
+    delete state.menuReturnScene;
+    updateNavState();
+    syncMenuState();
+    syncLayoutOffsets();
     render();
 }
 
@@ -48,6 +176,8 @@ function switchScene(scene) {
         return;
     }
     state.scene = scene;
+    updateNavState();
+    syncLayoutOffsets();
     document.getElementById('view-estate').classList.toggle('hidden', scene !== 'estate');
     document.getElementById('view-market').classList.toggle('hidden', scene !== 'market');
     document.getElementById('view-specs').classList.toggle('hidden', scene !== 'specs');
@@ -60,21 +190,16 @@ function switchScene(scene) {
 
 // --- Debug Menu ---
 function openDebugMenu() {
-    const pwd = prompt("Enter debug password:");
-    if (pwd === "instead") {
-        const select = document.getElementById('debug-resource');
-        select.innerHTML = '';
-        const allRes = [...ALL_RESOURCES, 'prestige', 'population'];
-        allRes.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r;
-            opt.textContent = r.replace('_', ' ').toUpperCase();
-            select.appendChild(opt);
-        });
-        document.getElementById('debug-modal').classList.remove('hidden');
-    } else if (pwd !== null) {
-        alert("Incorrect password.");
-    }
+    const select = document.getElementById('debug-resource');
+    select.innerHTML = '';
+    const allRes = [...ALL_RESOURCES, 'prestige', 'population'];
+    allRes.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r.replace('_', ' ').toUpperCase();
+        select.appendChild(opt);
+    });
+    document.getElementById('debug-modal').classList.remove('hidden');
 }
 
 function closeDebugMenu() {
@@ -367,13 +492,32 @@ function gameTick() {
 // --- Initialization ---
 
 document.addEventListener('DOMContentLoaded', () => {
+    syncMenuState();
+    syncLayoutOffsets();
+    syncStockpilePanel();
+
     // Bind static UI interactions
-    document.getElementById('btn-start-game').addEventListener('click', startGame);
-    document.getElementById('btn-toggle-ribbon').addEventListener('click', toggleRibbon);
+    document.getElementById('btn-start-game').addEventListener('click', handleMenuBegin);
+    document.getElementById('btn-confirm-begin')?.addEventListener('click', startGame);
+    document.getElementById('estate-name-input')?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            startGame();
+        }
+    });
+    document.getElementById('btn-main-menu')?.addEventListener('click', openMainMenu);
+    document.getElementById('btn-toggle-stockpiles')?.addEventListener('click', toggleStockpiles);
+    document.getElementById('btn-stockpile-raw')?.addEventListener('click', () => setStockpileView('raw'));
+    document.getElementById('btn-stockpile-goods')?.addEventListener('click', () => setStockpileView('goods'));
     document.getElementById('btn-submit-order').addEventListener('click', submitOrder);
+
+    // Options dropdown
+    document.getElementById('btn-options').addEventListener('click', toggleOptionsMenu);
+    document.addEventListener('click', closeOptionsMenu);
+    window.addEventListener('resize', syncLayoutOffsets);
 
     // Save/Load Modal Bindings
     document.getElementById('btn-open-save-modal').addEventListener('click', openSaveLoadModal);
+    document.getElementById('btn-open-save-from-menu')?.addEventListener('click', handleMenuContinue);
     document.getElementById('btn-close-save-modal').addEventListener('click', closeSaveLoadModal);
     document.getElementById('btn-export-save').addEventListener('click', exportSaveToFile);
     document.getElementById('input-import-save').addEventListener('change', importSaveFromFile);
@@ -419,4 +563,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initiate Game Engine Loop
     setInterval(gameTick, 1000);
+    
+    // Autosave every 60 seconds during active gameplay
+    setInterval(() => {
+        if (state.scene !== 'menu' && state.population && state.population.total > 0) {
+            saveGameToSlot(0, { silent: true });
+        }
+    }, 60000);
 });

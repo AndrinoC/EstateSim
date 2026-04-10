@@ -51,6 +51,13 @@ function render() {
         }
     }
 
+    if (typeof syncLayoutOffsets === 'function') {
+        syncLayoutOffsets();
+    }
+    if (typeof syncStockpilePanel === 'function') {
+        syncStockpilePanel();
+    }
+
     for (let res of ALL_RESOURCES) {
         const el = document.getElementById(`res-${res}`);
         const rateEl = document.getElementById(`res-${res}-rate`);
@@ -63,8 +70,29 @@ function render() {
     }
 
     const idle = state.population.total - state.population.assigned;
-    document.getElementById('pop-display').textContent = `${state.population.total} / ${state.population.max}`;
+    document.getElementById('pop-display').textContent = state.population.total;
+    document.getElementById('pop-max-display').textContent = state.population.max;
     document.getElementById('idle-display').textContent = idle;
+
+    const hudFood = document.getElementById('hud-food');
+    const hudFoodRate = document.getElementById('hud-food-rate');
+    const hudGold = document.getElementById('hud-gold');
+    const hudGoldRate = document.getElementById('hud-gold-rate');
+
+    if (hudFood) hudFood.textContent = Math.floor(state.resources.food || 0);
+    if (hudGold) hudGold.textContent = Math.floor(state.resources.gold || 0);
+
+    if (hudFoodRate) {
+        const foodNet = state.rates.food || 0;
+        hudFoodRate.textContent = `${foodNet > 0 ? '+' : ''}${foodNet.toFixed(1)}`;
+        hudFoodRate.className = `hud-rate ${foodNet > 0 ? 'text-green-500' : (foodNet < 0 ? 'text-red-500' : 'text-gray-500')}`;
+    }
+
+    if (hudGoldRate) {
+        const goldNet = state.rates.gold || 0;
+        hudGoldRate.textContent = `${goldNet > 0 ? '+' : ''}${goldNet.toFixed(1)}`;
+        hudGoldRate.className = `hud-rate ${goldNet > 0 ? 'text-green-500' : (goldNet < 0 ? 'text-red-500' : 'text-gray-500')}`;
+    }
 
     const prestigeEl = document.getElementById('prestige-display');
     if (prestigeEl && typeof state.resources.prestige !== 'undefined') {

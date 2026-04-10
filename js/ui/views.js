@@ -394,6 +394,48 @@ function renderSaveLoadModal() {
     container.innerHTML = '';
     const totalSlots = 3;
 
+    // Slot 0 is autosave
+    const autoKey = `estatesim_save_0`;
+    const autoData = localStorage.getItem(autoKey);
+    const autoDiv = document.createElement('div');
+    autoDiv.className = 'parchment-card p-3 flex items-center justify-between gap-4 bg-purple-900/20 border border-purple-600/30';
+    
+    if (autoData) {
+        try {
+            const data = JSON.parse(autoData);
+            const saveDate = new Date(data.saveDate || Date.now());
+            autoDiv.innerHTML = `
+                <div class="flex-grow">
+                    <p class="font-bold text-purple-400">Autosave: <span class="text-yellow-500">${data.estateName || 'Unnamed Estate'}</span></p>
+                    <p class="text-xs text-gray-400">Saved: ${saveDate.toLocaleString()}</p>
+                    <p class="text-xs text-gray-400">Population: ${data.population.total.toLocaleString()}</p>
+                    <p class="text-[10px] text-purple-400 italic">Auto-saved every 60 seconds during gameplay</p>
+                </div>
+                <div class="flex gap-2">
+                    <button data-action="load" data-slot="0" class="btn-medieval px-4 py-1 rounded text-xs font-bold text-green-500">Load</button>
+                    <button data-action="delete" data-slot="0" class="btn-medieval px-4 py-1 rounded text-xs font-bold text-red-500">Delete</button>
+                </div>
+            `;
+        } catch (e) {
+            autoDiv.innerHTML = `
+                <div class="flex-grow">
+                    <p class="font-bold text-red-500">Autosave: Corrupted Data</p>
+                </div>
+                <div class="flex gap-2">
+                    <button data-action="delete" data-slot="0" class="btn-medieval px-4 py-1 rounded text-xs font-bold text-red-500">Delete</button>
+                </div>
+            `;
+        }
+    } else {
+        autoDiv.innerHTML = `
+            <div class="flex-grow">
+                <p class="font-bold text-gray-500">Autosave: No data</p>
+            </div>
+        `;
+    }
+    container.appendChild(autoDiv);
+
+    // Manual slots 1-3
     for (let i = 1; i <= totalSlots; i++) {
         const slotKey = `estatesim_save_${i}`;
         const savedData = localStorage.getItem(slotKey);

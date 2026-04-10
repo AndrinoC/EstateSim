@@ -1,72 +1,604 @@
-@import url('https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --parchment: #f4e4bc;
-    --ink: #2c241a;
-    --stone: #4a4a4a;
+    --header-offset: 0px;
+    --bg-0: #0d1117;
+    --bg-1: #121820;
+    --bg-2: #1a1410;
+    --panel: rgba(29, 23, 18, 0.82);
+    --panel-strong: rgba(19, 16, 13, 0.92);
+    --panel-soft: rgba(33, 27, 22, 0.72);
+    --border: rgba(171, 132, 66, 0.24);
+    --border-strong: rgba(226, 188, 98, 0.42);
+    --gold: #e5bf70;
+    --gold-soft: #b98b42;
+    --ink: #ebe7e0;
+    --muted: #9c9388;
+    --shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
 }
 
 body {
-    font-family: 'Andika', sans-serif;
-    background-color: #1a1a1a;
-    background-image: linear-gradient(rgba(26, 26, 26, 0.85), rgba(26, 26, 26, 0.95)), url('Village.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    color: #e5e7eb;
+    position: relative;
+    font-family: 'Inter', sans-serif;
+    background:
+        radial-gradient(circle at top, rgba(205, 146, 61, 0.18), transparent 28%),
+        radial-gradient(circle at 20% 80%, rgba(47, 87, 128, 0.16), transparent 30%),
+        linear-gradient(180deg, #12161d 0%, #0c0e13 42%, #120e0b 100%);
+    color: var(--ink);
     overflow-x: hidden;
     min-height: 100vh;
 }
 
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(7, 8, 11, 0.4), rgba(7, 8, 11, 0.82)),
+        url('assets/ui/MainMenu.png') center/cover no-repeat;
+    opacity: 0.2;
+    filter: blur(2px) saturate(0.85);
+    transform: scale(1.03);
+    pointer-events: none;
+    z-index: -2;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 120px),
+        linear-gradient(rgba(255, 255, 255, 0.012) 0, rgba(255, 255, 255, 0.012) 1px, transparent 1px, transparent 120px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: -1;
+}
+
 .medieval-font {
     font-family: 'Almendra', serif;
+    letter-spacing: 0.02em;
 }
 
 .parchment-card {
-    background-color: #2a241e;
-    border: 2px solid #3d352a;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-    border-radius: 0.5rem;
+    background:
+        linear-gradient(180deg, rgba(52, 42, 34, 0.92), rgba(24, 20, 17, 0.88)),
+        rgba(24, 20, 17, 0.88);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 236, 191, 0.06);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
 }
 
 .btn-medieval {
-    background: linear-gradient(to bottom, #694c31, #2c241a);
-    border: 2px solid #5d5043;
-    transition: all 0.2s ease;
+    position: relative;
+    background:
+        linear-gradient(180deg, rgba(120, 88, 44, 0.92), rgba(69, 47, 27, 0.96));
+    border: 1px solid rgba(204, 162, 88, 0.3);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 239, 196, 0.15);
+    transition: transform 0.18s ease, filter 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .btn-medieval:hover:not(:disabled) {
-    filter: brightness(1.2);
-    transform: translateY(1px);
+    filter: brightness(1.08);
+    border-color: rgba(228, 191, 112, 0.52);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 239, 196, 0.18);
+    transform: translateY(-1px);
 }
 
 .btn-medieval:active:not(:disabled) {
-    transform: translateY(0px);
+    transform: translateY(0);
 }
 
 .btn-medieval:disabled {
-    opacity: 0.5;
+    opacity: 0.42;
     cursor: not-allowed;
+    box-shadow: none;
+}
+
+input,
+select {
+    background: rgba(10, 11, 14, 0.54);
+    border-color: rgba(180, 141, 79, 0.22) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: rgba(229, 191, 112, 0.65) !important;
+    box-shadow: 0 0 0 1px rgba(229, 191, 112, 0.18);
+}
+
+.game-layout {
+    display: grid;
+    grid-template-columns: 228px minmax(0, 1fr);
+    gap: 1.1rem;
+    align-items: start;
+}
+
+.game-main {
+    min-width: 0;
+}
+
+.side-nav-shell {
+    position: sticky;
+    top: 0.75rem;
+    padding: 0.85rem 0.8rem;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(16, 18, 24, 0.9), rgba(21, 17, 14, 0.9));
+    border: 1px solid rgba(179, 139, 76, 0.2);
+    box-shadow: var(--shadow);
+}
+
+.side-nav-sticky {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.hud-panel {
+    padding: 0.8rem;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(11, 14, 19, 0.76), rgba(24, 19, 15, 0.82));
+    border: 1px solid rgba(188, 146, 77, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.04);
+}
+
+.hud-panel-title {
+    margin-bottom: 0.7rem;
+    color: #b4a182;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.hud-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+}
+
+.hud-card {
+    padding: 0.7rem 0.75rem;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.08));
+    border: 1px solid rgba(196, 154, 84, 0.14);
+}
+
+.hud-label {
+    color: #91867a;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.hud-value {
+    color: #f3eee2;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.hud-subvalue {
+    color: #8d857d;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.hud-resource-head,
+.hud-resource-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.hud-resource-head {
+    margin-bottom: 0.45rem;
+}
+
+.hud-resource-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.hud-rate {
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.side-nav-btn {
+    width: 100%;
+    text-align: left;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+}
+
+.side-nav-divider {
+    height: 1px;
+    margin: 0.45rem 0;
+    background: linear-gradient(90deg, transparent, rgba(184, 147, 82, 0.28), transparent);
+}
+
+.game-main>header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding-top: 0.25rem;
+    backdrop-filter: blur(14px);
+}
+
+.topbar-shell {
+    background: linear-gradient(180deg, rgba(19, 17, 14, 0.88), rgba(19, 17, 14, 0.68));
+    border: 1px solid rgba(178, 139, 74, 0.16);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 1rem 1.15rem;
+}
+
+.topbar-title {
+    text-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+    letter-spacing: 0.01em;
+}
+
+.topbar-subtitle {
+    color: #a7a09a;
+}
+
+.topbar-progress-label {
+    color: #8f867c;
+}
+
+.topbar-progress-track {
+    background: rgba(8, 10, 13, 0.65);
+    border: 1px solid rgba(184, 147, 82, 0.22);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.main-nav .nav-btn,
+.options-btn {
+    border: 1px solid transparent;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.main-nav .nav-btn:hover,
+.options-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(219, 181, 100, 0.24);
+    background: rgba(204, 150, 60, 0.1);
+}
+
+.main-nav .nav-btn.is-active {
+    color: #fff6df !important;
+    border-color: rgba(233, 193, 112, 0.38);
+    background: linear-gradient(180deg, rgba(184, 129, 44, 0.2), rgba(100, 64, 23, 0.18));
+    box-shadow: inset 0 1px 0 rgba(255, 233, 182, 0.08);
+}
+
+.options-menu {
+    background: linear-gradient(180deg, rgba(21, 20, 17, 0.98), rgba(13, 13, 12, 0.98));
+    border: 1px solid rgba(193, 151, 81, 0.22);
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+}
+
+.options-menu button+button {
+    border-top: 1px solid rgba(190, 148, 79, 0.12);
+}
+
+#ribbon-raw .parchment-card,
+#ribbon-goods .parchment-card {
+    background:
+        linear-gradient(180deg, rgba(23, 26, 33, 0.86), rgba(27, 20, 16, 0.9));
+    border-color: rgba(188, 146, 77, 0.18);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+}
+
+#market-exchange-view,
+#market-orders-view .parchment-card,
+#view-specs .parchment-card,
+#view-territories .parchment-card,
+#view-garrison .parchment-card,
+#view-castle .parchment-card,
+#save-load-modal .parchment-card,
+#debug-modal .parchment-card {
+    background:
+        linear-gradient(180deg, rgba(23, 26, 33, 0.84), rgba(27, 20, 16, 0.92));
+}
+
+.menu-overlay {
+    background: linear-gradient(180deg, rgba(7, 9, 12, 0.44), rgba(7, 9, 12, 0.84));
+}
+
+#menu-screen {
+    position: fixed;
+    isolation: isolate;
+}
+
+#menu-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at center, rgba(223, 172, 87, 0.08), transparent 36%),
+        linear-gradient(180deg, rgba(7, 9, 12, 0.1), rgba(7, 9, 12, 0.74)),
+        url('assets/ui/MainMenu.png') calc(50% + 80px) 0% / cover no-repeat,
+        linear-gradient(180deg, #1a1d24 0%, #0a0b0f 100%);
+    z-index: -2;
+}
+
+#menu-screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        url('assets/ui/MainMenuFrame.png') center 50% / 140% 140% no-repeat,
+        radial-gradient(circle at center, transparent 35%, rgba(5, 6, 9, 0.42) 100%);
+    z-index: -1;
+}
+
+#menu-screen .menu-shell {
+    position: relative;
+    z-index: 1;
+}
+
+#menu-screen h1 {
+    text-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+
+.menu-shell {
+    position: relative;
+}
+
+.menu-kicker {
+    display: inline-block;
+    margin-bottom: 0.9rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(232, 192, 111, 0.24);
+    background: rgba(255, 209, 120, 0.06);
+    color: #d2b57c;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.menu-version {
+    display: inline-block;
+    margin-bottom: 1.1rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(190, 148, 79, 0.18);
+    color: #bda57e;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.menu-form-shell {
+    padding: 1.35rem;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(16, 18, 24, 0.76), rgba(25, 18, 14, 0.82));
+    border: 1px solid rgba(214, 174, 92, 0.2);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(10px);
+}
+
+.menu-form-compact {
+    padding: 1.35rem;
+}
+
+.menu-action-btn {
+    min-height: 96px;
+    padding: 0 !important;
+    border: none;
+    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.28);
+    background-color: transparent;
+    background-image:
+        linear-gradient(180deg, rgba(255, 244, 214, 0.08), rgba(0, 0, 0, 0.08)),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0 6px, rgba(0, 0, 0, 0.02) 6px 12px),
+        linear-gradient(180deg, rgba(140, 103, 53, 0.98), rgba(101, 69, 34, 0.98));
+    transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+}
+
+.menu-action-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow: 0 20px 34px rgba(0, 0, 0, 0.32);
+}
+
+.menu-action-btn-secondary {
+    background-image:
+        linear-gradient(180deg, rgba(255, 244, 214, 0.06), rgba(0, 0, 0, 0.1)),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 6px, rgba(0, 0, 0, 0.03) 6px 12px),
+        linear-gradient(180deg, rgba(130, 96, 52, 0.94), rgba(91, 63, 33, 0.96));
+}
+
+.menu-action-btn-primary {
+    background-image:
+        url('assets/ui/BeginButton.png'),
+        linear-gradient(180deg, rgba(255, 244, 214, 0.08), rgba(0, 0, 0, 0.08)),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0 6px, rgba(0, 0, 0, 0.02) 6px 12px),
+        linear-gradient(180deg, rgba(140, 103, 53, 0.98), rgba(101, 69, 34, 0.98));
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 132% auto, 100% 100%, auto, auto;
+    color: transparent !important;
+    text-shadow: none !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+}
+
+.menu-action-btn-secondary {
+    background-image:
+        url('assets/ui/ContinueButton.png'),
+        linear-gradient(180deg, rgba(255, 244, 214, 0.06), rgba(0, 0, 0, 0.1)),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 6px, rgba(0, 0, 0, 0.03) 6px 12px),
+        linear-gradient(180deg, rgba(130, 96, 52, 0.94), rgba(91, 63, 33, 0.96));
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 132% auto, 100% 100%, auto, auto;
+    color: transparent !important;
+    text-shadow: none !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+}
+
+.menu-note {
+    color: #91867a;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+}
+
+.reserves-shell {
+    position: relative;
+    padding: 0;
+}
+
+.stockpile-drawer {
+    padding: 0.8rem 0.95rem 0.9rem;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(17, 20, 26, 0.88), rgba(22, 18, 14, 0.84));
+    border: 1px solid rgba(188, 146, 77, 0.16);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 235, 190, 0.03);
+}
+
+.reserves-head {
+    position: relative;
+    z-index: 1;
+}
+
+.reserves-head h2 {
+    opacity: 0.92;
+}
+
+#stockpiles-panel {
+    margin-top: 0.65rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(188, 146, 77, 0.12);
+}
+
+#worker-tasks,
+#buildings-grid {
+    min-height: 0;
+}
+
+.stockpile-tab {
+    border: 1px solid rgba(196, 154, 84, 0.14);
+    background: rgba(255, 255, 255, 0.025);
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.stockpile-tab:hover {
+    border-color: rgba(219, 181, 100, 0.24);
+    background: rgba(204, 150, 60, 0.1);
+}
+
+.stockpile-tab.is-active {
+    color: #fff6df;
+    border-color: rgba(233, 193, 112, 0.38);
+    background: linear-gradient(180deg, rgba(184, 129, 44, 0.2), rgba(100, 64, 23, 0.18));
+}
+
+#ribbon-raw .parchment-card {
+    min-height: 82px;
+}
+
+#ribbon-raw .parchment-card img {
+    width: 28px;
+    height: 28px;
+}
+
+#ribbon-goods .parchment-card img {
+    width: 34px;
+    height: 34px;
+}
+
+#ribbon-raw .parchment-card span,
+#ribbon-goods .parchment-card span {
+    line-height: 1.15;
+}
+
+#ribbon-goods .parchment-card {
+    padding: 0.85rem;
+}
+
+#ribbon-raw .parchment-card .text-sm,
+#ribbon-goods .parchment-card .text-sm {
+    font-size: 0.92rem;
+}
+
+#notification-box>div {
+    backdrop-filter: blur(10px);
+    border-radius: 14px;
+    background: rgba(17, 19, 24, 0.92) !important;
+    border-left-width: 3px !important;
+    border: 1px solid rgba(209, 164, 84, 0.2);
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
 }
+
 ::-webkit-scrollbar-track {
-    background: #1a1a1a;
+    background: rgba(0, 0, 0, 0.18);
 }
+
 ::-webkit-scrollbar-thumb {
-    background: #3d352a;
-    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(132, 97, 52, 0.95), rgba(64, 44, 25, 0.95));
+    border-radius: 999px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
 }
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
-.menu-overlay {
-    background-image: url('assets/ui/MainMenu.png');
-    /* Change to .jpg if using the existing file */
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+@media (max-width: 768px) {
+    body {
+        background-attachment: scroll;
+    }
+
+    .game-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .side-nav-shell {
+        position: relative;
+        top: 0;
+        padding: 0.8rem;
+    }
+
+    .hud-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .topbar-shell {
+        padding: 1rem 1rem 0.9rem;
+        border-radius: 20px;
+    }
+
+    .reserves-shell {
+        position: relative;
+        top: 0;
+        padding-top: 0.4rem;
+    }
+
+    .game-main>header {
+        position: relative;
+    }
 }

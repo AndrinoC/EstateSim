@@ -179,7 +179,13 @@ function recruitUnit(unitId) {
 }
 
 function exportSaveToFile() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const exportState = { ...state };
+    if (exportState.scene === 'menu' && exportState.menuReturnScene) {
+        exportState.scene = exportState.menuReturnScene;
+    }
+    delete exportState.menuReturnScene;
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportState));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "estatesim_save_" + Date.now() + ".json");
@@ -206,6 +212,8 @@ function importSaveFromFile(event) {
                         state[key] = loadedState[key];
                     }
                 }
+                delete state.menuReturnScene;
+
                 if (state.scene !== 'menu') {
                     document.getElementById('menu-screen')?.classList.add('hidden');
                     document.getElementById('game-container')?.classList.remove('hidden');
@@ -219,6 +227,7 @@ function importSaveFromFile(event) {
                 
                 switchScene(state.scene);
                 render();
+                if (typeof syncMenuState === 'function') syncMenuState();
                 if (typeof notify === 'function') notify("Game loaded successfully.", "#4ade80");
             } else {
                 if (typeof notify === 'function') notify("Invalid save file.", "#ef4444");
@@ -231,21 +240,32 @@ function importSaveFromFile(event) {
     event.target.value = ''; // Clear the input field for future uploads
 }
 
-function saveGameToSlot(slot) {
-    if (!slot) return;
+function saveGameToSlot(slot, options = {}) {
+    if (slot === undefined || slot === null || slot === '') return;
+    const { silent = false } = options;
     const saveData = {
         ...state,
         saveDate: new Date().toISOString()
     };
+    if (saveData.scene === 'menu' && saveData.menuReturnScene) {
+        saveData.scene = saveData.menuReturnScene;
+    }
+    delete saveData.menuReturnScene;
+
     localStorage.setItem(`estatesim_save_${slot}`, JSON.stringify(saveData));
-    notify(`Game saved to slot ${slot}.`, "#4ade80");
+    if (!silent) {
+        notify(`Game saved to slot ${slot}.`, "#4ade80");
+    }
     if (typeof renderSaveLoadModal === 'function') {
         renderSaveLoadModal();
+    }
+    if (typeof syncMenuState === 'function') {
+        syncMenuState();
     }
 }
 
 function loadGameFromSlot(slot) {
-    if (!slot) return;
+    if (slot === undefined || slot === null || slot === '') return;
     const savedData = localStorage.getItem(`estatesim_save_${slot}`);
     if (!savedData) {
         return notify(`Slot ${slot} is empty.`, "#ef4444");
@@ -253,19 +273,20 @@ function loadGameFromSlot(slot) {
 
     try {
         const loadedState = JSON.parse(savedData);
-        if (loadedState && loadedState.resources && loadedState.population) {
-            // Replicate the soft merge from the original file-based load function
-            for (let key in loadedState) {
+            if (loadedState && loadedState.resources && loadedState.population) {
+                // Replicate the soft merge from the original file-based load function
+                for (let key in loadedState) {
                 if (Object.prototype.hasOwnProperty.call(loadedState, key)) {
                     if (typeof loadedState[key] === 'object' && !Array.isArray(loadedState[key]) && loadedState[key] !== null) {
                         state[key] = { ...state[key], ...loadedState[key] };
                     } else {
                         state[key] = loadedState[key];
                     }
+                    }
                 }
-            }
+                delete state.menuReturnScene;
 
-            if (state.scene !== 'menu') {
+                if (state.scene !== 'menu') {
                 document.getElementById('menu-screen')?.classList.add('hidden');
                 document.getElementById('game-container')?.classList.remove('hidden');
             }
@@ -292,13 +313,16 @@ function loadGameFromSlot(slot) {
 }
 
 function deleteSaveSlot(slot) {
-    if (!slot) return;
+    if (slot === undefined || slot === null || slot === '') return;
     const key = `estatesim_save_${slot}`;
     if (localStorage.getItem(key)) {
         localStorage.removeItem(key);
         notify(`Save slot ${slot} deleted.`, "#a3a3a3");
         if (typeof renderSaveLoadModal === 'function') {
             renderSaveLoadModal();
+        }
+        if (typeof syncMenuState === 'function') {
+            syncMenuState();
         }
     } else {
         notify(`Slot ${slot} is already empty.`, "#ef4444");

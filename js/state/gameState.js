@@ -1,8 +1,9 @@
 // /js/state/gameState.js
 
-const state = {
+const initialState = {
     scene: 'menu', 
     ribbonView: 'raw', 
+    showStockpiles: true,
     marketTab: 'exchange', 
     estateName: 'Lockwood Keep',
     resources: { 
@@ -72,3 +73,13 @@ const state = {
     },
     tick: 0
 };
+
+const state = JSON.parse(JSON.stringify(initialState));
+
+function resetGameState() {
+    const freshState = JSON.parse(JSON.stringify(initialState));
+    for (const key of Object.keys(state)) {
+        delete state[key];
+    }
+    Object.assign(state, freshState);
+}
