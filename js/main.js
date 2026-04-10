@@ -53,10 +53,70 @@ function switchScene(scene) {
     document.getElementById('view-specs').classList.toggle('hidden', scene !== 'specs');
     document.getElementById('view-territories').classList.toggle('hidden', scene !== 'territories');
     document.getElementById('view-garrison').classList.toggle('hidden', scene !== 'garrison');
+    const castleView = document.getElementById('view-castle');
+    if (castleView) castleView.classList.toggle('hidden', scene !== 'castle');
     render();
 }
 
+// --- Debug Menu ---
+function openDebugMenu() {
+    const pwd = prompt("Enter debug password:");
+    if (pwd === "instead") {
+        const select = document.getElementById('debug-resource');
+        select.innerHTML = '';
+        const allRes = [...ALL_RESOURCES, 'prestige', 'population'];
+        allRes.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.textContent = r.replace('_', ' ').toUpperCase();
+            select.appendChild(opt);
+        });
+        document.getElementById('debug-modal').classList.remove('hidden');
+    } else if (pwd !== null) {
+        alert("Incorrect password.");
+    }
+}
+
+function closeDebugMenu() {
+    document.getElementById('debug-modal').classList.add('hidden');
+}
+
+function addDebugResource() {
+    const res = document.getElementById('debug-resource').value;
+    const amount = parseInt(document.getElementById('debug-amount').value, 10);
+    if (res && !isNaN(amount)) {
+        if (res === 'population') {
+            state.population.total += amount;
+        } else if (typeof state.resources[res] !== 'undefined') {
+            state.resources[res] += amount;
+        } else {
+            state.resources[res] = amount;
+        }
+        if (typeof notify === 'function') notify(`Added ${amount} ${res}`, "#4ade80");
+        render();
+    }
+}
+
 // --- Game Engine Logic ---
+
+function initializeCastleState() {
+    if (!state.castle) {
+        state.castle = {
+            built: false,
+            building: false,
+            buildTicks: 0,
+            rooms: { throneRoom: false, barracks: false, councilChamber: false },
+            activeEdict: null,
+            edictTicksLeft: 0,
+            councilMembers: [],
+            hiredCouncil: { marshal: null, steward: null, chancellor: null }
+        };
+    }
+    if (typeof state.resources.prestige === 'undefined') {
+        state.resources.prestige = 0;
+        state.rates.prestige = 0;
+    }
+}
 
 function fluctuatePrices() {
     for (let [res, prices] of Object.entries(state.market)) {
@@ -71,7 +131,30 @@ function fluctuatePrices() {
 
 function gameTick() {
     if (state.scene === 'menu') return;
+    initializeCastleState();
     state.tick++;
+
+    if (state.castle.building && !state.castle.built) {
+        state.castle.buildTicks++;
+        if (state.castle.buildTicks >= CASTLE_BUILD_TICKS) {
+            state.castle.building = false;
+            state.castle.built = true;
+            notify("Castle construction complete!", "#a855f7");
+        }
+    }
+    
+    if (state.castle.built) {
+        state.rates.prestige = 0.5;
+        state.resources.prestige += 0.5;
+    }
+    
+    if (state.castle.activeEdict) {
+        state.castle.edictTicksLeft--;
+        if (state.castle.edictTicksLeft <= 0) {
+            notify("An Edict has expired.", "#a3a3a3");
+            state.castle.activeEdict = null;
+        }
+    }
 
     const { tier, index, prestige } = getSettlementLevel(state.population.total);
     
@@ -146,6 +229,12 @@ function gameTick() {
     for (let t of state.territories) {
         if (t.owner === 'player' && t.specialty !== 'none') {
             territoryBonuses[t.specialty] = (territoryBonuses[t.specialty] || 0) + 0.25; 
+                
+                if (t.conquered) {
+                    const passiveIncome = (index + 1) * 2;
+                    state.resources[t.specialty] += passiveIncome;
+                    state.rates[t.specialty] += passiveIncome;
+                }
         }
     }
 
@@ -173,6 +262,20 @@ function gameTick() {
             if (territoryBonuses[task.res]) {
                 resProduced *= (1 + territoryBonuses[task.res]);
             }
+            
+            if (state.castle && state.castle.activeEdict) {
+                if (state.castle.activeEdict === 'wood_boost' && task.res === 'wood') resProduced *= 1.5;
+                if (state.castle.activeEdict === 'stone_boost' && task.res === 'stone') resProduced *= 1.5;
+                if (state.castle.activeEdict === 'food_boost' && task.res === 'food') resProduced *= 1.5;
+            }
+            
+            if (task.res === 'gold' && state.castle && state.castle.hiredCouncil && state.castle.hiredCouncil.steward) {
+                const stewardId = state.castle.hiredCouncil.steward;
+                const steward = state.castle.councilMembers.find(c => c.id === stewardId);
+                if (steward) {
+                    resProduced *= (1 + (steward.skill * 0.01));
+                }
+            }
 
             state.rates[task.res] += resProduced;
             state.resources[task.res] += resProduced;
@@ -182,7 +285,17 @@ function gameTick() {
     // Consumption & Starvation
     const normalPop = state.population.total - state.armyWorkers;
     const armyPop = state.armyWorkers;
-    const consumption = (normalPop * 1.5) + (armyPop * 1.875);
+    
+    let armyUpkeepMult = 1.875;
+    if (state.castle && state.castle.hiredCouncil && state.castle.hiredCouncil.marshal) {
+        const marshalId = state.castle.hiredCouncil.marshal;
+        const marshal = state.castle.councilMembers.find(c => c.id === marshalId);
+        if (marshal) {
+            armyUpkeepMult *= (1 - (marshal.skill * 0.01));
+        }
+    }
+    
+    const consumption = (normalPop * 1.5) + (armyPop * armyUpkeepMult);
     
     state.rates.food -= consumption;
     state.resources.food -= consumption;
@@ -234,7 +347,10 @@ function gameTick() {
     if (state.tick % 10 === 0) {
         const hasFood = state.resources.food > 20;
         const hasSpace = state.population.total < state.population.max;
-        if (Math.random() < 0.3 && hasSpace && hasFood) {
+        let popChance = 0.3;
+        if (state.castle && state.castle.activeEdict === 'pop_growth') popChance = 0.6;
+        
+        if (Math.random() < popChance && hasSpace && hasFood) {
             state.population.total++;
             notify("A new worker has settled in.", "#4ade80");
 
@@ -262,6 +378,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-export-save').addEventListener('click', exportSaveToFile);
     document.getElementById('input-import-save').addEventListener('change', importSaveFromFile);
 
+    // Debug Bindings
+    document.getElementById('btn-debug').addEventListener('click', openDebugMenu);
+    document.getElementById('btn-close-debug').addEventListener('click', closeDebugMenu);
+    document.getElementById('btn-debug-add').addEventListener('click', addDebugResource);
 
     // Bind dynamic Navigation Buttons
     document.querySelectorAll('.nav-btn').forEach(btn => {

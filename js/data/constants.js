@@ -6,6 +6,22 @@ const ALL_RESOURCES = [
     'furniture', 'jewelry', 'weaponry'
 ];
 
+const RESOURCE_ICONS = {
+    wood: "assets/resources/Wood.png",
+    stone: "assets/resources/Stone.png",
+    iron: "assets/resources/Iron.png",
+    gold: "assets/resources/Gold.png",
+    food: "assets/resources/Food.png",
+    planks: "assets/resources/Planks.png",
+    polished_stone: "assets/resources/PolishedStone.png",
+    nails: "assets/resources/Nails.png",
+    gems: "assets/resources/Gems.png",
+    spices: "assets/resources/Spices.png",
+    furniture: "assets/resources/Furniture.png",
+    jewelry: "assets/resources/Jewelry.png",
+    weaponry: "assets/resources/Arms.png"
+};
+
 const SETTLEMENT_TIERS = [
     { name: "Homestead", req: 1, bonus: { res: "food", mult: 1.1 }, desc: "+10% Food Production" },
     { name: "Hamlet", req: 50, bonus: { res: "wood", mult: 1.15 }, desc: "+15% Wood Production" },
@@ -85,3 +101,27 @@ const MARKET_BASES = {
     jewelry: { min: 350, max: 900 },
     weaponry: { min: 250, max: 600 }
 };
+
+const TERRITORY_NAMES = [
+    "Eldoria", "Valerius", "Thornhold", "Riverrun", "Oakhaven",
+    "Stonecrest", "Ironpeak", "Glimmerbrook", "Shadowfen", "Frostford",
+    "Highmount", "Silverkeep", "Direwood", "Sunhollow", "Mistvalen"
+];
+
+const CASTLE_COST = { gold: 10000, planks: 2000, stone: 2000 };
+const CASTLE_BUILD_TICKS = 150;
+
+const CASTLE_ROOMS = {
+    throneRoom: { name: "Throne Room", cost: { gold: 5000, polished_stone: 500 }, desc: "Unlocks Edicts." },
+    barracks: { name: "Barracks", cost: { gold: 5000, weaponry: 200 }, desc: "Reduces the cost of recruiting new regiments." },
+    councilChamber: { name: "Council Chamber", cost: { gold: 8000, furniture: 100 }, desc: "Unlocks Councilmembers." }
+};
+
+const EDICTS = [
+    { id: 'pop_growth', name: "Festival of Plenty", cost: { prestige: 50, gold: 1000 }, duration: 100, desc: "Significantly increases population growth chance." },
+    { id: 'wood_boost', name: "Timber Draft", cost: { prestige: 20, gold: 500 }, duration: 100, desc: "Temporarily boosts wood production." },
+    { id: 'stone_boost', name: "Quarry Quotas", cost: { prestige: 20, gold: 500 }, duration: 100, desc: "Temporarily boosts stone production." },
+    { id: 'food_boost', name: "Harvest Subsidies", cost: { prestige: 30, gold: 800 }, duration: 100, desc: "Temporarily boosts food production." }
+];
+
+const COUNCIL_NAMES = ["Lord Rickard", "Lady Elara", "Sir Gareth", "Maester Aemon", "Baroness Vanya", "Count Darian"];

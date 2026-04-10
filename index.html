@@ -37,13 +37,16 @@
                         <span id="tier-progress-text">0 / 50</span>
                     </div>
                     <div class="progress-bar bg-black/60 border border-yellow-900/30 h-2">
-                        <div id="tier-progress-fill" class="progress-fill bg-yellow-600 shadow-[0_0_10px_rgba(202,138,4,0.5)]"></div>
+                        <div id="tier-progress-fill" class="progress-fill h-full bg-yellow-600 shadow-[0_0_10px_rgba(202,138,4,0.5)]"></div>
                     </div>
                 </div>
             </div>
             <div class="flex gap-3 mt-4 md:mt-0 items-center flex-wrap justify-end">
                 <button id="btn-open-save-modal" class="btn-medieval px-3 py-2 rounded text-sm font-bold text-yellow-500 flex items-center gap-2">
                     💾 Manage Saves
+                </button>
+                <button id="btn-debug" class="btn-medieval px-3 py-2 rounded text-sm font-bold text-gray-500 flex items-center gap-2">
+                    ⚙️ Debug
                 </button>
                 <button id="btn-specs" class="btn-medieval px-3 py-2 rounded text-sm font-bold text-green-500 hidden transition-all flex items-center gap-2 nav-btn" data-target="specs">
                     <img src="assets/ui/Specializations.png" alt="Specs" class="w-5 h-5 object-contain"> Specs (<span id="btn-specs-count">0</span>)
@@ -57,6 +60,9 @@
                 <button class="btn-medieval px-3 py-2 rounded text-sm font-bold text-yellow-500 flex items-center gap-2 nav-btn" data-target="market">
                     <img src="assets/ui/Market.png" alt="Market" class="w-5 h-5 object-contain"> Market
                 </button>
+                <button class="btn-medieval px-3 py-2 rounded text-sm font-bold text-purple-500 flex items-center gap-2 nav-btn" data-target="castle">
+                    🏰 Castle
+                </button>
                 <div class="flex gap-4 bg-black/40 p-2 rounded-lg border border-yellow-900/20 ml-2">
                     <div class="text-center">
                         <span class="block text-xs uppercase text-gray-500">Pop</span>
@@ -65,6 +71,10 @@
                     <div class="text-center">
                         <span class="block text-xs uppercase text-gray-500">Idle</span>
                         <span id="idle-display" class="text-lg font-bold text-yellow-500">0</span>
+                    </div>
+                    <div class="text-center">
+                        <span class="block text-xs uppercase text-gray-500">Prestige</span>
+                        <span id="prestige-display" class="text-lg font-bold text-purple-400">0</span>
                     </div>
                 </div>
             </div>
@@ -217,9 +227,9 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                 <h2 class="medieval-font text-3xl text-yellow-700">Market</h2>
                 <div class="flex gap-2">
-                    <button id="tab-exchange" class="btn-medieval px-4 py-2 rounded text-sm font-bold text-yellow-500 border-yellow-600 market-tab-btn" data-tab="exchange">Exchange</button>
-                    <button id="tab-orders" class="btn-medieval px-4 py-2 rounded text-sm font-bold text-gray-400 market-tab-btn" data-tab="orders">Trade Orders</button>
-                    <button class="btn-medieval px-6 py-2 rounded text-sm font-bold text-gray-300 ml-4 nav-btn" data-target="estate">Return</button>
+                    <button id="tab-exchange" class="btn-medieval px-4 py-2 rounded text-sm font-bold text-yellow-500 border-yellow-600 market-tab-btn" data-tab="exchange">Market</button>
+                    <button id="tab-orders" class="btn-medieval px-4 py-2 rounded text-sm font-bold text-gray-400 market-tab-btn" data-tab="orders">Trade Agreements</button>
+                    <button class="btn-medieval px-6 py-2 rounded text-sm font-bold text-gray-300 ml-4 nav-btn" data-target="estate">Return to Estate</button>
                 </div>
             </div>
             
@@ -244,7 +254,7 @@
 
             <div id="market-orders-view" class="hidden space-y-6">
                 <div class="parchment-card p-6">
-                    <h3 class="medieval-font text-xl text-yellow-600 mb-2">Negotiate New Order</h3>
+                    <h3 class="medieval-font text-xl text-yellow-600 mb-2">Negotiate New Agreement</h3>
                     <p class="text-xs text-gray-400 mb-6">Propose a perpetual trade agreement with an independent territory. Negotiate carefully; export sales fetch a premium, while imported goods require aggressive haggling based on your wealth and influence.</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
@@ -337,6 +347,57 @@
                 </div>
         </div>
 
+        <div id="view-castle" class="hidden space-y-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="medieval-font text-3xl text-purple-700">Castle & Manor</h2>
+                <button class="btn-medieval px-6 py-2 rounded text-sm font-bold text-gray-300 nav-btn" data-target="estate">
+                    Return to Estate
+                </button>
+            </div>
+            
+            <div id="castle-construction-view" class="parchment-card p-6 mb-6 text-center">
+            </div>
+
+            <div id="castle-rooms-view" class="hidden space-y-6">
+                <h3 class="medieval-font text-2xl text-yellow-600 mb-2">Castle Rooms</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="castle-rooms-grid"></div>
+                
+                <div id="throne-room-view" class="hidden parchment-card p-6">
+                    <h3 class="medieval-font text-2xl text-yellow-600 mb-2">Throne Room: Edicts</h3>
+                    <p class="text-xs text-gray-400 mb-4">Issue Edicts using Prestige and Gold for temporary buffs.</p>
+                    <div id="edicts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    <div id="active-edict-view" class="mt-4 p-4 bg-black/40 border border-yellow-900/30 rounded hidden">
+                        <p class="text-yellow-500 font-bold">Active Edict: <span id="active-edict-name"></span></p>
+                        <p class="text-gray-400 text-xs">Time remaining: <span id="active-edict-time"></span> ticks</p>
+                    </div>
+                </div>
+                
+                <div id="council-chamber-view" class="hidden parchment-card p-6">
+                    <h3 class="medieval-font text-2xl text-yellow-600 mb-2">Council Chamber</h3>
+                    <p class="text-xs text-gray-400 mb-4">Assign council members to powerful positions.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="p-4 bg-black/40 border border-yellow-900/30 rounded">
+                            <h4 class="font-bold text-gray-300 mb-2">Chancellor</h4>
+                            <p class="text-[10px] text-gray-500 mb-2">Improves Trade Agreement chances.</p>
+                            <div id="council-chancellor-slot"></div>
+                        </div>
+                        <div class="p-4 bg-black/40 border border-yellow-900/30 rounded">
+                            <h4 class="font-bold text-gray-300 mb-2">Marshal</h4>
+                            <p class="text-[10px] text-gray-500 mb-2">Reduces regiment food upkeep.</p>
+                            <div id="council-marshal-slot"></div>
+                        </div>
+                        <div class="p-4 bg-black/40 border border-yellow-900/30 rounded">
+                            <h4 class="font-bold text-gray-300 mb-2">Steward</h4>
+                            <p class="text-[10px] text-gray-500 mb-2">Increases passive Gold income.</p>
+                            <div id="council-steward-slot"></div>
+                        </div>
+                    </div>
+                    <h4 class="font-bold text-gray-300 mb-2">Available Candidates</h4>
+                    <div id="council-candidates-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="notification-box" class="fixed bottom-4 right-4 w-72 space-y-2 pointer-events-none z-50"></div>
     </div>
 
@@ -357,6 +418,25 @@
                     Import from File
                     <input type="file" id="input-import-save" accept=".json" class="hidden" />
                 </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="debug-modal" class="fixed inset-0 z-[60] flex items-center justify-center menu-overlay hidden">
+        <div class="parchment-card max-w-sm w-full p-6 relative">
+            <button id="btn-close-debug" class="absolute top-2 right-2 text-2xl font-bold text-gray-400 hover:text-white">&times;</button>
+            <h2 class="medieval-font text-2xl text-yellow-600 mb-4 text-center">Debug Menu</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase mb-1">Resource</label>
+                    <select id="debug-resource" class="w-full bg-black/40 border border-yellow-900/40 p-2 rounded text-white text-sm focus:outline-none focus:border-yellow-600">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase mb-1">Amount</label>
+                    <input type="number" id="debug-amount" value="1000" class="w-full bg-black/40 border border-yellow-900/40 p-2 rounded text-white text-sm focus:outline-none focus:border-yellow-600">
+                </div>
+                <button id="btn-debug-add" class="w-full py-2 btn-medieval rounded text-sm font-bold text-yellow-500">Add Resource</button>
             </div>
         </div>
     </div>

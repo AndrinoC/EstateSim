@@ -22,6 +22,8 @@ function buyTerritory(id) {
             notify("Prior trade orders with this region have been dissolved.", "#a3a3a3");
         }
         
+        checkTerritoryGeneration();
+        
         render();
     } else {
         notify("Insufficient gold.", "#ef4444");
@@ -54,7 +56,15 @@ function submitOrder() {
     const ownedCount = state.territories.filter(t => t.owner === 'player').length;
     const wealthFactor = Math.min(1.0, state.resources.gold / 100000); 
     
-    const finalChance = priceRatio + (ownedCount * 0.05) + (wealthFactor * 0.1);
+    let finalChance = priceRatio + (ownedCount * 0.05) + (wealthFactor * 0.1);
+
+    if (state.castle && state.castle.hiredCouncil && state.castle.hiredCouncil.chancellor) {
+        const chancellorId = state.castle.hiredCouncil.chancellor;
+        const chancellor = state.castle.councilMembers.find(c => c.id === chancellorId);
+        if (chancellor) {
+            finalChance += (chancellor.skill * 0.01);
+        }
+    }
 
     if (finalChance < 0.8 || Math.random() > finalChance) {
         notify(`${territory.name} rejected your offer. They demand a fairer price.`, "#ef4444");
@@ -147,11 +157,19 @@ function recruitUnit(unitId) {
     if (idle < unit.workers) {
         return notify(`Need ${unit.workers} idle workers to recruit ${unit.name}.`, "#ef4444");
     }
-    if (state.resources.weaponry < unit.cost.weaponry) {
-        return notify(`Insufficient Weaponry. Need ${unit.cost.weaponry}.`, "#ef4444");
+    
+    let costMult = 1;
+    if (state.castle && state.castle.rooms && state.castle.rooms.barracks) {
+        costMult = 0.8;
     }
 
-    state.resources.weaponry -= unit.cost.weaponry;
+    const actualCost = Math.floor(unit.cost.weaponry * costMult);
+
+    if (state.resources.weaponry < actualCost) {
+        return notify(`Insufficient Weaponry. Need ${actualCost}.`, "#ef4444");
+    }
+
+    state.resources.weaponry -= actualCost;
     state.population.assigned += unit.workers;
     state.armyWorkers += unit.workers;
     state.garrison[unitId]++;
@@ -285,4 +303,182 @@ function deleteSaveSlot(slot) {
     } else {
         notify(`Slot ${slot} is already empty.`, "#ef4444");
     }
+}
+
+function attackTerritory(id) {
+    const t = state.territories.find(x => x.id === id);
+    if (!t || t.owner === 'player') return;
+
+    let playerAtt = 0;
+    let playerDef = 0;
+    for (let [uId, data] of Object.entries(UNIT_DATA)) {
+        const count = state.garrison[uId] || 0;
+        playerAtt += data.att * count;
+        playerDef += data.def * count;
+    }
+    const playerPower = playerAtt + playerDef;
+
+    if (playerPower <= 0) {
+        return notify("You have no army to attack with!", "#ef4444");
+    }
+
+    const { index } = getSettlementLevel(state.population.total);
+    const minArmy = Math.max(1, index * 5);
+    const maxArmy = Math.max(10, index * 15);
+    const enemyAtt = Math.floor(Math.random() * (maxArmy - minArmy + 1)) + minArmy;
+    const enemyDef = Math.floor(Math.random() * (maxArmy - minArmy + 1)) + minArmy;
+    const enemyPower = enemyAtt + enemyDef;
+
+    notify(`Enemy Garrison Encountered - ATT: ${enemyAtt}, DEF: ${enemyDef}`, "#a3a3a3");
+
+    if (playerPower >= enemyPower) {
+        t.owner = 'player';
+        t.conquered = true;
+        notify(`Victory! You have conquered ${t.name}!`, "#4ade80");
+        applyBattleCasualties(0.1 + Math.random() * 0.15); // 10-25% casualties on win
+        
+        const priorOrders = state.orders.length;
+        state.orders = state.orders.filter(o => o.territoryId !== id);
+        if (state.orders.length < priorOrders) {
+            notify("Prior trade orders with this region have been forcefully dissolved.", "#a3a3a3");
+        }
+
+        checkTerritoryGeneration();
+    } else {
+        notify(`Defeat! Your army was repelled at ${t.name}.`, "#ef4444");
+        applyBattleCasualties(0.3 + Math.random() * 0.2); // 30-50% casualties on loss
+    }
+    render();
+}
+
+function applyBattleCasualties(percent) {
+    let totalLost = 0;
+    for (let [uId, data] of Object.entries(UNIT_DATA)) {
+        const count = state.garrison[uId];
+        if (count > 0) {
+            let lost = Math.floor(count * percent);
+            if (lost === 0 && Math.random() < percent) lost = 1;
+            
+            if (lost > 0) {
+                state.garrison[uId] -= lost;
+                const workersLost = lost * data.workers;
+                state.population.assigned -= workersLost;
+                state.armyWorkers -= workersLost;
+                state.population.total -= workersLost;
+                totalLost += lost;
+            }
+        }
+    }
+    if (totalLost > 0) notify(`You lost ${totalLost} regiments in the conflict.`, "#ef4444");
+}
+
+function checkTerritoryGeneration() {
+    if (state.hasGeneratedNewRegions) return;
+    const owned = state.territories.filter(t => t.owner === 'player').length;
+    if (owned >= 3) {
+        state.hasGeneratedNewRegions = true;
+        const { index } = getSettlementLevel(state.population.total);
+        
+        let availableNames = [...TERRITORY_NAMES];
+        for (let i = 0; i < 6; i++) {
+            const nameIndex = Math.floor(Math.random() * availableNames.length);
+            const tName = availableNames.splice(nameIndex, 1)[0] || `Region ${i}`;
+            
+            // Avoid gold for resource specialties to prevent OP infinite gold regions
+            const validSpecs = ALL_RESOURCES.filter(r => r !== 'gold');
+            const tSpec = validSpecs[Math.floor(Math.random() * validSpecs.length)];
+            
+            state.territories.push({
+                id: 'gen_' + Date.now() + '_' + i,
+                name: tName,
+                specialty: tSpec,
+                owner: 'independent',
+                cost: 25000 + (index * 15000)
+            });
+        }
+        notify("6 new independent regions have been discovered!", "#a855f7");
+    }
+}
+
+function startCastleConstruction() {
+    if (state.castle.built || state.castle.building) return;
+    if (state.resources.gold >= CASTLE_COST.gold && state.resources.planks >= CASTLE_COST.planks && state.resources.stone >= CASTLE_COST.stone) {
+        state.resources.gold -= CASTLE_COST.gold;
+        state.resources.planks -= CASTLE_COST.planks;
+        state.resources.stone -= CASTLE_COST.stone;
+        state.castle.building = true;
+        state.castle.buildTicks = 0;
+        notify("Castle construction has begun!", "#a855f7");
+        render();
+    } else {
+        notify("Insufficient resources for Castle.", "#ef4444");
+    }
+}
+
+function buildCastleRoom(roomId) {
+    if (state.castle.rooms[roomId]) return;
+    const room = CASTLE_ROOMS[roomId];
+    for (let [res, val] of Object.entries(room.cost)) {
+        if (state.resources[res] < val) return notify("Insufficient resources.", "#ef4444");
+    }
+    for (let [res, val] of Object.entries(room.cost)) {
+        state.resources[res] -= val;
+    }
+    state.castle.rooms[roomId] = true;
+    notify(`${room.name} constructed!`, "#a855f7");
+    
+    if (roomId === 'councilChamber') generateCouncilMembers();
+    
+    render();
+}
+
+function issueEdict(edictId) {
+    if (state.castle.activeEdict) return notify("An Edict is already active.", "#ef4444");
+    const edict = EDICTS.find(e => e.id === edictId);
+    if (!edict) return;
+    
+    if (state.resources.prestige >= edict.cost.prestige && state.resources.gold >= edict.cost.gold) {
+        if (edictId === 'wood_boost' && (!state.buildings.woodcutter.built || state.assignments.woodcutting <= 0)) return notify("Requires Woodcutter's Hut and active worker.", "#ef4444");
+        if (edictId === 'stone_boost' && (!state.buildings.quarry.built || state.assignments.mining_stone <= 0)) return notify("Requires Stone Quarry and active worker.", "#ef4444");
+        if (edictId === 'food_boost' && (!state.buildings.farm.built || state.assignments.farming <= 0)) return notify("Requires Village Farm and active worker.", "#ef4444");
+        
+        state.resources.prestige -= edict.cost.prestige;
+        state.resources.gold -= edict.cost.gold;
+        
+        state.castle.activeEdict = edictId;
+        state.castle.edictTicksLeft = edict.duration;
+        notify(`${edict.name} issued!`, "#a855f7");
+        render();
+    } else {
+        notify("Insufficient Prestige or Gold.", "#ef4444");
+    }
+}
+
+function generateCouncilMembers() {
+    if (state.castle.councilMembers.length === 0) {
+        for (let i = 0; i < 3; i++) {
+            state.castle.councilMembers.push({
+                id: 'cm_' + Date.now() + '_' + i,
+                name: COUNCIL_NAMES[Math.floor(Math.random() * COUNCIL_NAMES.length)] + " " + (i + 1),
+                skill: Math.floor(Math.random() * 5) + 5
+            });
+        }
+    }
+}
+
+function assignCouncilMember(memberId, position) {
+    for (let pos in state.castle.hiredCouncil) {
+        if (state.castle.hiredCouncil[pos] === memberId) {
+            state.castle.hiredCouncil[pos] = null;
+        }
+    }
+    state.castle.hiredCouncil[position] = memberId;
+    notify(`Assigned to ${position}.`, "#a855f7");
+    render();
+}
+
+function unassignCouncilMember(position) {
+    state.castle.hiredCouncil[position] = null;
+    notify(`Dismissed from ${position}.`, "#a3a3a3");
+    render();
 }

@@ -66,6 +66,11 @@ function render() {
     document.getElementById('pop-display').textContent = `${state.population.total} / ${state.population.max}`;
     document.getElementById('idle-display').textContent = idle;
 
+    const prestigeEl = document.getElementById('prestige-display');
+    if (prestigeEl && typeof state.resources.prestige !== 'undefined') {
+        prestigeEl.textContent = Math.floor(state.resources.prestige);
+    }
+
     if (state.scene === 'estate') {
         renderEstate();
     } else if (state.scene === 'market') {
@@ -76,5 +81,7 @@ function render() {
         renderTerritories();
     } else if (state.scene === 'garrison') {
         renderGarrison();
+    } else if (state.scene === 'castle') {
+        if (typeof renderCastle === 'function') renderCastle();
     }
 }

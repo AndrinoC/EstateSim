@@ -13,8 +13,14 @@ function renderGarrison() {
         totalAtt += data.att * count;
         totalDef += data.def * count;
         
+        let costMult = 1;
+        if (state.castle && state.castle.rooms && state.castle.rooms.barracks) {
+            costMult = 0.8;
+        }
+        const actualCost = Math.floor(data.cost.weaponry * costMult);
+        
         const idle = state.population.total - state.population.assigned;
-        const affordable = state.resources.weaponry >= data.cost.weaponry && idle >= data.workers;
+        const affordable = state.resources.weaponry >= actualCost && idle >= data.workers;
 
         const card = document.createElement('div');
         card.className = `parchment-card p-4 flex flex-col justify-between relative overflow-hidden min-h-[160px]`;
@@ -39,8 +45,8 @@ function renderGarrison() {
                 <div class="flex justify-between items-center text-xs mb-3 bg-black/50 p-2 rounded border border-yellow-900/30">
                     <span class="text-gray-400 font-bold drop-shadow-md mr-2">COST:</span>
                     <div class="flex gap-2 drop-shadow-md font-bold">
-                        <span class="${state.resources.weaponry >= data.cost.weaponry ? 'text-gray-300' : 'text-red-400'}">${data.cost.weaponry} WEA</span>
-                        <span class="${idle >= data.workers ? 'text-gray-300' : 'text-red-400'}">${data.workers} POP</span>
+                        <span class="flex items-center gap-1 ${state.resources.weaponry >= actualCost ? 'text-gray-300' : 'text-red-400'}">${actualCost} <img src="${RESOURCE_ICONS.weaponry}" alt="Weaponry" class="w-4 h-4 object-contain" title="Weaponry"></span>
+                        <span class="flex items-center gap-1 ${idle >= data.workers ? 'text-gray-300' : 'text-red-400'}">${data.workers} POP</span>
                     </div>
                 </div>
                 <button onclick="recruitUnit('${id}')" class="w-full py-2 rounded text-xs font-bold btn-medieval uppercase text-red-500 shadow-lg" ${!affordable ? 'disabled' : ''}>
@@ -53,12 +59,23 @@ function renderGarrison() {
 
     document.getElementById('garrison-att').textContent = totalAtt;
     document.getElementById('garrison-def').textContent = totalDef;
-    document.getElementById('garrison-upkeep').textContent = (state.armyWorkers * 1.875).toFixed(1);
+    
+    let armyUpkeepMult = 1.875;
+    if (state.castle && state.castle.hiredCouncil && state.castle.hiredCouncil.marshal) {
+        const marshalId = state.castle.hiredCouncil.marshal;
+        const marshal = state.castle.councilMembers.find(c => c.id === marshalId);
+        if (marshal) armyUpkeepMult *= (1 - (marshal.skill * 0.01));
+    }
+    document.getElementById('garrison-upkeep').textContent = (state.armyWorkers * armyUpkeepMult).toFixed(1);
 }
 
 function renderTerritories() {
     const grid = document.getElementById('territories-grid');
     grid.innerHTML = '';
+    
+    const { index } = getSettlementLevel(state.population.total);
+    const minArmy = Math.max(1, index * 5);
+    const maxArmy = Math.max(10, index * 15);
     
     for (let t of state.territories) {
         const isOwned = t.owner === 'player';
@@ -74,17 +91,26 @@ function renderTerritories() {
                     </span>
                 </div>
                 ${t.specialty !== 'none' ? `<p class="text-sm text-gray-300 mb-2">Regional Specialty: <span class="font-bold text-yellow-500 uppercase">${t.specialty}</span></p>` : `<p class="text-sm text-gray-500 italic mb-2">Founding Estate</p>`}
-                <p class="text-xs text-gray-400 mb-6">${isOwned && t.specialty !== 'none' ? '+25% ' + t.specialty + ' production is active globally.' : (!isOwned ? 'Unclaimed territory. Purchase to annex and unlock its regional bonus.' : 'Your seat of power.')}</p>
+            <p class="text-xs text-gray-400 mb-6">${isOwned && t.specialty !== 'none' ? '+25% ' + t.specialty + ' production is active globally.' : (!isOwned ? 'Unclaimed territory. Purchase to annex or Attack to claim and enforce tribute.' : 'Your seat of power.')}${t.conquered ? `<br><span class="text-red-400 font-bold mt-1 inline-block">Conquered: +${(index + 1) * 2} ${t.specialty.replace('_', ' ')}/tick tribute.</span>` : ''}</p>
             </div>
             <div>
                 ${!isOwned ? `
+            <div class="flex justify-between items-center text-xs mb-1 bg-black/50 p-2 rounded border border-red-900/30" title="Estimated Attack and Defense bounds of the defending army.">
+                <span class="text-gray-400 font-bold">Est. Garrison:</span>
+                <span class="text-red-400 font-bold drop-shadow-md">⚔️ ${minArmy}-${maxArmy} &nbsp;|&nbsp; 🛡️ ${minArmy}-${maxArmy}</span>
+            </div>
                 <div class="flex justify-between items-center text-sm mb-3 bg-black/50 p-2 rounded border border-yellow-900/30">
                     <span class="text-gray-400 font-bold">COST:</span>
-                    <span class="${state.resources.gold >= t.cost ? 'text-yellow-500' : 'text-red-500'} font-bold">${t.cost.toLocaleString()} Gold</span>
+                    <span class="flex items-center gap-1 ${state.resources.gold >= t.cost ? 'text-yellow-500' : 'text-red-500'} font-bold">${t.cost.toLocaleString()} <img src="${RESOURCE_ICONS.gold}" alt="Gold" class="w-4 h-4 object-contain" title="Gold"></span>
                 </div>
+            <div class="flex gap-2">
                 <button onclick="buyTerritory('${t.id}')" class="w-full py-3 rounded text-sm font-bold btn-medieval uppercase text-yellow-500 shadow-lg" ${state.resources.gold < t.cost ? 'disabled' : ''}>
-                    Annex Territory
+                    Annex
                 </button>
+                <button onclick="attackTerritory('${t.id}')" class="w-full py-3 rounded text-sm font-bold btn-medieval uppercase text-red-500 shadow-lg border border-red-900/50" title="Launch an assault to claim by force.">
+                    Attack
+                </button>
+            </div>
                 ` : `
                 <div class="w-full py-3 rounded text-sm font-bold bg-green-900/20 border border-green-600/30 text-green-500 text-center uppercase tracking-widest">
                     Owned
@@ -146,8 +172,8 @@ function renderEstate() {
         let consumesHTML = '';
         let hasMaterials = true;
         if (task.consumes) {
-            const reqStr = Object.entries(task.consumes).map(([cRes, cAmt]) => `${cAmt} ${cRes.replace('_',' ')}`).join(', ');
-            consumesHTML = `<div class="text-[10px] text-red-300 font-bold mt-1 drop-shadow-md border border-red-900/50 bg-black/50 px-1 rounded inline-block">Cost: ${reqStr} / t</div>`;
+            const reqStr = Object.entries(task.consumes).map(([cRes, cAmt]) => `<span class="inline-flex items-center gap-1">${cAmt} <img src="${RESOURCE_ICONS[cRes]}" alt="${cRes}" class="w-3 h-3 object-contain" title="${cRes.replace('_', ' ').toUpperCase()}"></span>`).join('<span class="mx-1">,</span>');
+            consumesHTML = `<div class="text-[10px] text-red-300 font-bold mt-1 drop-shadow-md border border-red-900/50 bg-black/50 px-1 rounded flex flex-wrap items-center gap-1 w-fit">Cost: ${reqStr} / t</div>`;
             
             if (count > 0 && task._activeCyclesThisTick !== undefined && task._activeCyclesThisTick < count) {
                 hasMaterials = false;
@@ -182,7 +208,7 @@ function renderEstate() {
         const bld = state.buildings[key];
         const costs = calculateCost(key);
         const affordable = canAfford(costs);
-        const costList = Object.entries(costs).map(([res, val]) => `<span class="${state.resources[res] >= val ? 'text-gray-300' : 'text-red-400'}">${val}${res.substring(0,3).toUpperCase()}</span>`).join(' ');
+        const costList = Object.entries(costs).map(([res, val]) => `<span class="flex items-center gap-1 ${state.resources[res] >= val ? 'text-gray-300' : 'text-red-400'}">${val} <img src="${RESOURCE_ICONS[res]}" alt="${res}" class="w-4 h-4 object-contain" title="${res.replace('_', ' ').toUpperCase()}"></span>`).join(' ');
 
         const card = document.createElement('div');
         card.className = `parchment-card p-4 flex flex-col justify-between relative overflow-hidden min-h-[160px]`;
@@ -413,5 +439,151 @@ function renderSaveLoadModal() {
             `;
         }
         container.appendChild(slotDiv);
+    }
+}
+
+function renderCastle() {
+    const cView = document.getElementById('castle-construction-view');
+    const rView = document.getElementById('castle-rooms-view');
+    
+    if (!state.castle.built) {
+        cView.classList.remove('hidden');
+        rView.classList.add('hidden');
+        
+        if (state.castle.building) {
+            const progress = (state.castle.buildTicks / CASTLE_BUILD_TICKS) * 100;
+            cView.innerHTML = `
+                <h3 class="medieval-font text-2xl text-purple-600 mb-4">Castle Construction in Progress</h3>
+                <div class="w-full bg-black/60 border border-purple-900/30 h-4 mb-2">
+                    <div class="h-full bg-purple-600 transition-all duration-1000" style="width: ${progress}%"></div>
+                </div>
+                <p class="text-xs text-gray-400">Time remaining: ${CASTLE_BUILD_TICKS - state.castle.buildTicks} ticks</p>
+            `;
+        } else {
+            const canAffordCastle = state.resources.gold >= CASTLE_COST.gold && state.resources.planks >= CASTLE_COST.planks && state.resources.stone >= CASTLE_COST.stone;
+            cView.innerHTML = `
+                <h3 class="medieval-font text-2xl text-purple-600 mb-4">Foundation of Power</h3>
+                <p class="text-sm text-gray-400 mb-6">Construct a magnificent Castle to establish dominance and earn Prestige.</p>
+                <div class="flex justify-center items-center gap-6 mb-6 font-bold text-sm">
+                    <span class="flex items-center gap-1 ${state.resources.gold >= CASTLE_COST.gold ? 'text-gray-300' : 'text-red-400'}">${CASTLE_COST.gold} <img src="${RESOURCE_ICONS.gold}" alt="Gold" class="w-4 h-4 object-contain" title="Gold"></span>
+                    <span class="flex items-center gap-1 ${state.resources.planks >= CASTLE_COST.planks ? 'text-gray-300' : 'text-red-400'}">${CASTLE_COST.planks} <img src="${RESOURCE_ICONS.planks}" alt="Planks" class="w-4 h-4 object-contain" title="Planks"></span>
+                    <span class="flex items-center gap-1 ${state.resources.stone >= CASTLE_COST.stone ? 'text-gray-300' : 'text-red-400'}">${CASTLE_COST.stone} <img src="${RESOURCE_ICONS.stone}" alt="Stone" class="w-4 h-4 object-contain" title="Stone"></span>
+                </div>
+                <button onclick="startCastleConstruction()" class="btn-medieval px-8 py-3 rounded text-lg font-bold text-purple-500 shadow-lg" ${!canAffordCastle ? 'disabled' : ''}>
+                    Construct Castle
+                </button>
+            `;
+        }
+    } else {
+        cView.classList.add('hidden');
+        rView.classList.remove('hidden');
+        
+        const roomsGrid = document.getElementById('castle-rooms-grid');
+        roomsGrid.innerHTML = '';
+        for (let [id, room] of Object.entries(CASTLE_ROOMS)) {
+            const isBuilt = state.castle.rooms[id];
+            let costStr = '';
+            let affordable = true;
+            for (let [res, val] of Object.entries(room.cost)) {
+                if (state.resources[res] < val) affordable = false;
+                costStr += `<span class="flex items-center gap-1 ${state.resources[res] >= val ? 'text-gray-300' : 'text-red-400'}">${val} <img src="${RESOURCE_ICONS[res]}" alt="${res}" class="w-4 h-4 object-contain" title="${res.replace('_', ' ').toUpperCase()}"></span> `;
+            }
+            
+            const div = document.createElement('div');
+            div.className = `parchment-card p-4 ${isBuilt ? 'border-purple-600/50 bg-purple-900/10' : ''}`;
+            div.innerHTML = `
+                <h4 class="font-bold text-lg text-purple-500 mb-1">${room.name}</h4>
+                <p class="text-xs text-gray-400 mb-4 h-8">${room.desc}</p>
+                ${isBuilt ? `<div class="text-center font-bold text-purple-400 uppercase text-xs py-2 bg-black/40 rounded border border-purple-900/30">Constructed</div>` : `
+                <div class="flex justify-between items-center text-xs mb-3 bg-black/50 p-2 rounded border border-purple-900/30">
+                    <span class="text-gray-400 font-bold">COST:</span>
+                    <div class="flex gap-2 font-bold">${costStr}</div>
+                </div>
+                <button onclick="buildCastleRoom('${id}')" class="w-full py-2 rounded text-xs font-bold btn-medieval uppercase text-purple-500 shadow-lg" ${!affordable ? 'disabled' : ''}>Build</button>
+                `}
+            `;
+            roomsGrid.appendChild(div);
+        }
+        
+        const trView = document.getElementById('throne-room-view');
+        if (state.castle.rooms.throneRoom) {
+            trView.classList.remove('hidden');
+            const eContainer = document.getElementById('edicts-container');
+            eContainer.innerHTML = '';
+            for (let edict of EDICTS) {
+                const canAffordEdict = state.resources.prestige >= edict.cost.prestige && state.resources.gold >= edict.cost.gold;
+                const div = document.createElement('div');
+                div.className = "p-3 bg-black/40 border border-yellow-900/30 rounded";
+                div.innerHTML = `
+                    <h5 class="font-bold text-yellow-500 text-sm mb-1">${edict.name}</h5>
+                    <p class="text-[10px] text-gray-400 mb-2 h-8">${edict.desc}</p>
+                    <div class="flex justify-between items-center text-[10px] font-bold mb-2">
+                        <span class="${state.resources.prestige >= edict.cost.prestige ? 'text-purple-400' : 'text-red-400'}">${edict.cost.prestige} Prestige</span>
+                        <span class="flex items-center gap-1 ${state.resources.gold >= edict.cost.gold ? 'text-yellow-500' : 'text-red-400'}">${edict.cost.gold} <img src="${RESOURCE_ICONS.gold}" alt="Gold" class="w-3 h-3 object-contain" title="Gold"></span>
+                    </div>
+                    <button onclick="issueEdict('${edict.id}')" class="w-full py-1 rounded text-[10px] font-bold btn-medieval uppercase text-yellow-600" ${!canAffordEdict || state.castle.activeEdict ? 'disabled' : ''}>Issue</button>
+                `;
+                eContainer.appendChild(div);
+            }
+            
+            const activeEdictView = document.getElementById('active-edict-view');
+            if (state.castle.activeEdict) {
+                activeEdictView.classList.remove('hidden');
+                document.getElementById('active-edict-name').textContent = EDICTS.find(e => e.id === state.castle.activeEdict).name;
+                document.getElementById('active-edict-time').textContent = state.castle.edictTicksLeft;
+            } else {
+                activeEdictView.classList.add('hidden');
+            }
+        } else {
+            trView.classList.add('hidden');
+        }
+        
+        const ccView = document.getElementById('council-chamber-view');
+        if (state.castle.rooms.councilChamber) {
+            ccView.classList.remove('hidden');
+            const renderSlot = (posId, slotId) => {
+                const slotEl = document.getElementById(slotId);
+                const memberId = state.castle.hiredCouncil[posId];
+                if (memberId) {
+                    const member = state.castle.councilMembers.find(c => c.id === memberId);
+                    slotEl.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-bold text-white">${member.name} (+${member.skill}%)</span>
+                            <button onclick="unassignCouncilMember('${posId}')" class="text-[10px] text-red-500 hover:text-red-400 font-bold bg-black/50 px-2 py-1 rounded">Dismiss</button>
+                        </div>
+                    `;
+                } else {
+                    slotEl.innerHTML = `<span class="text-xs text-gray-500 italic">Vacant</span>`;
+                }
+            };
+            
+            renderSlot('chancellor', 'council-chancellor-slot');
+            renderSlot('marshal', 'council-marshal-slot');
+            renderSlot('steward', 'council-steward-slot');
+            
+            const cList = document.getElementById('council-candidates-list');
+            cList.innerHTML = '';
+            for (let member of state.castle.councilMembers) {
+                const isAssigned = Object.values(state.castle.hiredCouncil).includes(member.id);
+                if (isAssigned) continue;
+                
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-2 bg-black/40 border border-yellow-900/30 rounded";
+                div.innerHTML = `
+                    <div>
+                        <span class="text-sm font-bold text-white block">${member.name}</span>
+                        <span class="text-[10px] text-purple-400 font-bold">Skill: ${member.skill}%</span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="assignCouncilMember('${member.id}', 'chancellor')" class="btn-medieval px-2 py-1 rounded text-[10px] font-bold text-gray-300" title="Assign Chancellor">C</button>
+                        <button onclick="assignCouncilMember('${member.id}', 'marshal')" class="btn-medieval px-2 py-1 rounded text-[10px] font-bold text-gray-300" title="Assign Marshal">M</button>
+                        <button onclick="assignCouncilMember('${member.id}', 'steward')" class="btn-medieval px-2 py-1 rounded text-[10px] font-bold text-gray-300" title="Assign Steward">S</button>
+                    </div>
+                `;
+                cList.appendChild(div);
+            }
+        } else {
+            ccView.classList.add('hidden');
+        }
     }
 }
